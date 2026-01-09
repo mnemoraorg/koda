@@ -1,0 +1,36 @@
+version: '3.8'
+
+services:
+  # 1. DATABASE Service (Postgres with pgvector)
+  db:
+    image: ankane/pgvector:latest
+    container_name: koda-db
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: koda
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  # 2. API Service (FastAPI)
+  api:
+    build:
+      context: ../  # Build context is project root so it can see api/
+      dockerfile: .docker/Dockerfile
+      target: api   # Target the specific stage in our multi-stage file
+    container_name: koda-api
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://postgres:password@db:5432/koda
+      - GOOGLE_GEMINI_API_KEY=${GOOGLE_GEMINI_API_KEY}  # Pass from host env
+      - ENVIRONMENT=production
+    volumes:
+      - ../api:/app/api  # Hot reload mount (optional, for dev)
+
+volumes:
+  postgres_data:
